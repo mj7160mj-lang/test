@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>불씨체크 | 점검 기록</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6fa;color:#202638;font-family:Arial,sans-serif}
+header{background:#b91c1c;color:white;padding:24px 20px;border-radius:0 0 22px 22px}
+header h1{margin:0;font-size:25px}
+main{max-width:600px;margin:auto;padding:20px}
+.card{background:white;padding:18px;border-radius:16px;margin-bottom:15px}
+h2{font-size:19px}
+input{width:100%;padding:13px;border:1px solid #ddd;border-radius:9px;font-size:15px}
+.record{padding:15px 0;border-bottom:1px solid #eee}
+.record:last-child{border:0}
+.safe{color:#15803d;font-weight:bold}
+.check{color:#b91c1c;font-weight:bold}
+nav{display:flex;gap:8px;margin-top:20px}
+nav a{flex:1;text-align:center;padding:12px 5px;background:white;border-radius:10px;text-decoration:none;color:#333;font-size:13px}
+button{padding:10px;background:#b91c1c;color:white;border:0;border-radius:8px;margin-top:10px}
+#stats{font-size:15px;line-height:2}
+</style>
+</head>
+<body>
+<header>
+<h1>📋 점검 기록</h1>
+<p>우리의 안전 점검 기록을 확인하세요.</p>
+</header>
+<main>
+<div class="card">
+<h2>🔎 기록 검색</h2>
+<input type="text" id="search" placeholder="장소 이름 검색" oninput="showRecords()">
+</div>
+
+<div class="card">
+<h2>📊 점검 통계</h2>
+<div id="stats"></div>
+</div>
+
+<div class="card">
+<h2>📝 나의 점검 이력</h2>
+<div id="records"></div>
+</div>
+
+<nav>
+<a href="index.html">🏠 홈</a>
+<a href="check.html">📝 안전 점검</a>
+<a href="history.html">📋 기록 확인</a>
+</nav>
+</main>
+
+<script>
+function showRecords(){
+const all=JSON.parse(localStorage.getItem('fireChecks')||'[]');
+const keyword=document.getElementById('search').value.trim().toLowerCase();
+const filtered=all.filter(r=>r.place.toLowerCase().includes(keyword));
+
+const safe=all.filter(r=>r.state==='안전').length;
+const need=all.length-safe;
+
+document.getElementById('stats').innerHTML=
+'전체 점검 횟수: '+all.length+'회<br>'+
+'안전: '+safe+'회<br>'+
+'점검 필요: '+need+'회';
+
+const area=document.getElementById('records');
+
+if(filtered.length===0){
+area.innerHTML='<p>아직 점검 기록이 없습니다.</p>';
+return;
+}
+
+area.innerHTML=filtered.slice().reverse().map(r=>`
+<div class="record">
+<strong>${escapeHTML(r.place)}</strong>
+<p>${escapeHTML(r.date)}</p>
+<p>양호 항목: ${r.score}/4</p>
+<p class="${r.state==='안전'?'safe':'check'}">${r.state}</p>
+<button onclick="showDetail(${r.id})">상세 보기</button>
+</div>
+`).join('');
+}
+
+function escapeHTML(value){
+return String(value).replace(/[&<>"']/g,c=>({
+'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[c]));
+}
+
+function showDetail(id){
+const all=JSON.parse(localStorage.getItem('fireChecks')||'[]');
+const r=all.find(x=>x.id===id);
+if(!r)return;
+alert(
+'점검 장소: '+r.place+
+'\n소화기: '+r.fire+
+'\n비상구: '+r.exit+
+'\n전기시설: '+r.electric+
+'\n화재감지기: '+r.detector
+);
+}
+
+showRecords();
+</script>
+</body>
+</html>
