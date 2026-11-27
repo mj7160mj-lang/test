@@ -52,58 +52,97 @@ button{padding:10px;background:#b91c1c;color:white;border:0;border-radius:8px;ma
 </nav>
 </main>
 
+
 <script>
-function showRecords(){
-const all=JSON.parse(localStorage.getItem('fireChecks')||'[]');
-const keyword=document.getElementById('search').value.trim().toLowerCase();
-const filtered=all.filter(r=>r.place.toLowerCase().includes(keyword));
+const DB_URL = 'https://script.google.com/macros/s/AKfycbwEo5L5hP930tR3Z1xgwFW36CKHH6bQcDSyLmZ3csxTBkQVNUBoPzqG3L_0hLitEi_VXg/exec';
 
-const safe=all.filter(r=>r.state==='안전').length;
-const need=all.length-safe;
+let allRecords = [];
+let loaded = false;
 
-document.getElementById('stats').innerHTML=
-'전체 점검 횟수: '+all.length+'회<br>'+
-'안전: '+safe+'회<br>'+
-'점검 필요: '+need+'회';
+async function showRecords() {
+  const area = document.getElementById('records');
 
-const area=document.getElementById('records');
+  if (!loaded) {
+    area.innerHTML = '<p>기록을 불러오는 중입니다...</p>';
 
-if(filtered.length===0){
-area.innerHTML='<p>아직 점검 기록이 없습니다.</p>';
-return;
+    try {
+      const response = await fetch(DB_URL);
+      const rows = await response.json();
+
+      allRecords = rows.slice(1).map(r => ({
+        id: Number(r[0]),
+        place: String(r[1] ?? ''),
+        date: String(r[2] ?? ''),
+        fire: r[3],
+        exit: r[4],
+        electric: r[5],
+        detector: r[6],
+        score: Number(r[7]),
+        state: String(r[8] ?? '')
+      }));
+
+      loaded = true;
+    } catch (error) {
+      area.innerHTML = '<p>기록을 불러오지 못했습니다. 인터넷 연결과 DB 주소를 확인해 주세요.</p>';
+      return;
+    }
+  }
+
+  const keyword = document.getElementById('search').value.trim().toLowerCase();
+
+  const filtered = allRecords.filter(r =>
+    r.place.toLowerCase().includes(keyword)
+  );
+
+  const safe = allRecords.filter(r => r.state === '안전').length;
+  const need = allRecords.length - safe;
+
+  document.getElementById('stats').innerHTML =
+    '전체 점검 횟수: ' + allRecords.length + '회<br>' +
+    '안전: ' + safe + '회<br>' +
+    '점검 필요: ' + need + '회';
+
+  if (filtered.length === 0) {
+    area.innerHTML = '<p>아직 점검 기록이 없습니다.</p>';
+    return;
+  }
+
+  area.innerHTML = filtered.slice().reverse().map(r => `
+    <div class="record">
+      <strong>${escapeHTML(r.place)}</strong>
+      <p>${escapeHTML(r.date)}</p>
+      <p>양호 항목: ${r.score}/4</p>
+      <p class="${r.state === '안전' ? 'safe' : 'check'}">${escapeHTML(r.state)}</p>
+      <button onclick="showDetail(${r.id})">상세 보기</button>
+    </div>
+  `).join('');
 }
 
-area.innerHTML=filtered.slice().reverse().map(r=>`
-<div class="record">
-<strong>${escapeHTML(r.place)}</strong>
-<p>${escapeHTML(r.date)}</p>
-<p>양호 항목: ${r.score}/4</p>
-<p class="${r.state==='안전'?'safe':'check'}">${r.state}</p>
-<button onclick="showDetail(${r.id})">상세 보기</button>
-</div>
-`).join('');
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
 }
 
-function escapeHTML(value){
-return String(value).replace(/[&<>"']/g,c=>({
-'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-}[c]));
-}
+function showDetail(id) {
+  const r = allRecords.find(x => x.id === id);
+  if (!r) return;
 
-function showDetail(id){
-const all=JSON.parse(localStorage.getItem('fireChecks')||'[]');
-const r=all.find(x=>x.id===id);
-if(!r)return;
-alert(
-'점검 장소: '+r.place+
-'\n소화기: '+r.fire+
-'\n비상구: '+r.exit+
-'\n전기시설: '+r.electric+
-'\n화재감지기: '+r.detector
-);
+  alert(
+    '점검 장소: ' + r.place +
+    '\n소화기: ' + r.fire +
+    '\n비상구: ' + r.exit +
+    '\n전기시설: ' + r.electric +
+    '\n화재감지기: ' + r.detector
+  );
 }
 
 showRecords();
 </script>
+
 </body>
 </html>
